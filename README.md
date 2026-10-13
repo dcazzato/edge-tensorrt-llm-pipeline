@@ -4,6 +4,7 @@ Take an object-detection model from Hugging Face, make it fast (TensorRT FP16),
 portable (ONNX CPU fallback) and servable (FastAPI) — then make it honest: a
 vision-language model describes each scene and cross-checks the detector's own answer.
 
+[![CI](https://github.com/dcazzato/edge-tensorrt-llm-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/dcazzato/edge-tensorrt-llm-pipeline/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![Tests](https://img.shields.io/badge/tests-56%20passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -252,6 +253,15 @@ asset, and a C++ TensorRT runtime.
 ## Tech stack
 
 `TensorRT 11` · `ONNX Runtime` · `FastAPI` · `Hugging Face` · `ModelOpt` · `Pydantic` · `pytest` · `uv`
+
+## AI disclosure
+
+Built incrementally with an agentic AI coding assistant (Claude, driven via
+Cline), under continuous human direction: requirements, architecture, every
+benchmark run (local CPU + Colab T4) and the verification of each published
+number in `docs/RESULTS.md` are the author's. AI pairing here is the point,
+not a shortcut: the repo is about the verification gates that make the output
+trustworthy.
 
 ## License
 
