@@ -1,0 +1,94 @@
+# Single source of truth for project metadata, dependencies and tool config.
+# Tooling: uv — `uv sync` (install), `uv run ...` (execute), `uv lock` (resolve).
+
+[project]
+name = "edge-tensorrt-llm-pipeline"
+version = "0.1.0"
+description = "Edge AI pipeline: Hugging Face detection model -> ONNX/TensorRT acceleration -> FastAPI -> multimodal VLM layer"
+readme = "README.md"
+# Pinned to the 3.12 minor: the ML toolchain (TensorRT wheels, PyTorch CUDA
+# builds, onnxruntime) and Colab all lag behind — newest Python != safest
+# Python. uv will download and manage 3.12 for this project automatically.
+requires-python = ">=3.12,<3.13"
+license = "MIT"
+dependencies = [
+    # Base stays minimal: shared by every path (backends, API, scripts).
+    "pydantic>=2.7", # typed prediction schemas shared across backends and API
+    "numpy>=1.26",   # tensor math for preprocessing / postprocessing
+]
+
+[project.optional-dependencies]
+# One extra per layer — install only what the current step needs:
+#   uv sync --extra export                  (HF -> ONNX, CPU)
+#   uv sync --extra api                     (serving, CPU)
+#   uv sync --extra api --extra trt         (GPU machine / Colab)
+#   uv sync --extra vlm                     (multimodal cross-check)
+export = [
+    # CPU wheels only (see [tool.uv.sources] at the bottom of this file):
+    # no local GPU here, CUDA multi-GB bundles would be dead weight.
+    "torch>=2.4",
+    "torchvision>=0.24", # RfDetrImageProcessor needs it (optional dep upstream)
+    "transformers>=5.0", # native RF-DETR support (RfDetrForObjectDetection)
+    "onnxscript>=0.1",   # dynamo exporter backend (bicubic_aa has no legacy symbolic)
+    "onnxruntime>=1.18", # v3 parity check: execute the exported graph
+    "pillow>=10.3",      # image loading for the export sanity check
+]
+api = [
+    "fastapi>=0.111",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9", # multipart forms for image uploads
+    "pillow>=10.3",            # image decoding
+    "onnxruntime>=1.18", # CPU fallback backend
+]
+trt = [
+    # NOTE: CUDA-enabled PyTorch wheels live on the PyTorch index;
+    # we will configure [[tool.uv.index]] the first time we build on Colab.
+    # sys_platform marker: TensorRT ships Linux/Windows wheels only — this
+    # also keeps `uv lock` resolvable on macOS.
+    "tensorrt>=11.0; sys_platform == 'linux'",
+    "torch>=2.4",
+]
+vlm = [
+    # ONE adapter covers everything: Ollama, vLLM, LM Studio and the hosted
+    # OpenAI API all expose the same /chat/completions wire format — only the
+    # base URL changes (VLM_BASE_URL), so no per-vendor SDK is needed.
+    "openai>=1.40",
+]
+
+[dependency-groups]
+# PEP 735 group, installed by default with `uv sync` (skip with `--no-dev`).
+dev = [
+    "pytest>=8.2",
+    "ruff>=0.6",
+    "httpx>=0.27", # transport for FastAPI's TestClient
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# src/ layout: the importable package lands in the next iteration —
+# `uv sync` starts building the project from then on.
+packages = ["src/edge_trt_llm"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+# E/F: errors + pyflakes · I: import order · UP: modern syntax (pyupgrade)
+select = ["E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+# --- torch resolves to CPU-only wheels (no local GPU on this dev machine).
+# Colab installs its own CUDA torch via pip: unaffected by this.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }

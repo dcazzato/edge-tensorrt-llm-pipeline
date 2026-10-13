@@ -1,0 +1,48 @@
+# ── Python (regenerable files) ───────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# ── Tooling: test/lint caches (rebuilt automatically) ────────────────
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# ── ML artifacts: heavy and NOT portable ─────────────────────────────
+# *.engine is tied to the GPU + TensorRT version it was built with:
+# never commit it — publish it on GitHub Releases instead.
+*.onnx
+*.onnx.data
+*.engine
+*.trt
+*.pt
+*.pth
+*.safetensors
+# Negation rules re-include files, and only work when excluding the
+# CONTENTS of a directory — not the directory itself.
+artifacts/*
+!artifacts/benchmark.json
+!artifacts/manifest.json
+
+# ── Script and notebook outputs ──────────────────────────────────────
+outputs/
+logs/
+*.log
+.ipynb_checkpoints/
+
+# ── Secrets (VLM API keys, tokens) ───────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── OS / editor ──────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

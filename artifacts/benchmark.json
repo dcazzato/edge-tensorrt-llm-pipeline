@@ -1,0 +1,28 @@
+{
+  "gpu": "Tesla T4",
+  "tensorrt": "11.4.0.106",
+  "model": "Roboflow/rf-detr-nano",
+  "method": "warmup=10, timed=50, forward-only, gpu-synced, engines+contexts allocated once",
+  "results": [
+    {
+      "backend": "pytorch-fp16-cuda",
+      "p50_ms": 14.59,
+      "p99_ms": 15.77
+    },
+    {
+      "backend": "onnxruntime-cuda",
+      "p50_ms": 390.76,
+      "p99_ms": 593.45
+    },
+    {
+      "backend": "tensorrt-fp32",
+      "p50_ms": 12.69,
+      "p99_ms": 15.17
+    },
+    {
+      "backend": "tensorrt-fp16",
+      "p50_ms": 4.28,
+      "p99_ms": 4.45
+    }
+  ]
+}
