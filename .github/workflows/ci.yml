@@ -1,0 +1,74 @@
+# CI: only checks that catch REAL breakage in this repo — every step is here
+# because of a concrete failure mode, and the omissions are deliberate too.
+#
+# * export + pytest: the ONNX model is NOT committed (*.onnx is gitignored),
+#   so CI regenerates it via scripts/export_onnx.py. That validates the export
+#   against the CURRENT torch/transformers/onnxruntime release — with loose
+#   >= pins, an upstream release is the most likely thing to break. It also
+#   unlocks the API tests, which skip themselves when artifacts are missing;
+#   the guard step turns that "green by skipping" trap into a hard failure.
+# * ruff check: the project's own minimal rule set (E, F, I, UP). F catches
+#   real bugs (undefined names, unused imports), I import cycles, UP dead
+#   compat shims. NO format gate on purpose: the repo does not use
+#   `ruff format`, and failing CI on line wrapping nobody applies locally is
+#   exactly the senseless lint this project refuses to run.
+# * No tensorrt: the wheel is multi-GB and no free runner has a GPU; engines
+#   are per-GPU build artifacts by design (docs/RESULTS.md).
+# * Python 3.12 only: requires-python is pinned >=3.12,<3.13 (the ML toolchain
+#   lags); a version matrix would fail by construction.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # weekly tripwire: loose >= pins can be broken by an upstream release
+    # without any commit here.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install Python 3.12
+        run: uv python install 3.12
+
+      # the HF checkpoint cache: without it every run re-downloads RF-DETR nano
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-rfdetr-nano
+
+      - name: Install (CPU wheels only; trt/vlm extras excluded on purpose)
+        run: uv sync --frozen --extra export --extra api
+
+      - name: Lint (project rule set, no format gate)
+        run: uv run ruff check src tests scripts
+
+      - name: Export ONNX + parity check (writes artifacts/)
+        run: uv run python scripts/export_onnx.py
+
+      - name: Guard — artifacts exist, no silent skips
+        run: |
+          test -f artifacts/model.onnx
+          test -f artifacts/manifest.json
+
+      - name: Tests (parity vs Hugging Face, contracts, API, notebook cell)
+        run: uv run pytest -q

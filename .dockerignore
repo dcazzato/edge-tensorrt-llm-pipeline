@@ -1,0 +1,20 @@
+# Keep the build context tiny and the image clean.
+.git
+.github
+.vscode
+.venv
+**/__pycache__
+.pytest_cache
+.ruff_cache
+notebooks
+tests
+docs
+# only the serving artifacts enter the image (whitelist beats the personal
+# files and stray outputs that live in artifacts/)
+artifacts/*
+!artifacts/model.onnx
+!artifacts/model.onnx.data
+!artifacts/manifest.json
+# local env files (API keys!) must never enter the build context
+.env
+.env.*
